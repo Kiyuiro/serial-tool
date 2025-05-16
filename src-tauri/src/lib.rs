@@ -1,12 +1,15 @@
+mod config;
+
 use once_cell::sync::Lazy;
 use serialport::{available_ports, SerialPortType};
-use serialport::{SerialPort, SerialPortInfo};
+use serialport::{SerialPort};
 use std::io::{Read, Write};
 use std::sync::Mutex;
 use std::thread;
-use std::time::{Duration, Instant};
-use serde::Serialize;
+use std::time::{Duration};
+use serde::{Serialize};
 use tauri::{AppHandle, Emitter};
+use crate::config::{AppConfig};
 
 #[derive(Debug, serde::Deserialize)]
 struct PortConfig {
@@ -184,6 +187,18 @@ fn stop_serial_listener() {
     *running = false;
 }
 
+// 保存用户配置
+#[tauri::command]
+fn save_user_config(config: AppConfig) -> Result<(), String> {
+    config::save_config(&config)
+}
+
+// 加载用户配置
+#[tauri::command]
+fn load_user_config() -> AppConfig {
+    config::load_config()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -195,6 +210,8 @@ pub fn run() {
             write_serial,
             start_serial_listener,
             stop_serial_listener,
+            save_user_config,
+            load_user_config,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

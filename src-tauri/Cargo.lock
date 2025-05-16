@@ -3285,6 +3285,7 @@ dependencies = [
 name = "serialtool"
 version = "0.1.0"
 dependencies = [
+ "dirs",
  "once_cell",
  "serde",
  "serde_json",
