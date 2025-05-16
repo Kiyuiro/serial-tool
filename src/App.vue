@@ -45,7 +45,7 @@
       </div>
       <div>
         <span style="font-weight: 500; font-size: 14px; color: #606266; margin-right: 100px;">发送字符串颜色</span>
-        <el-color-picker v-model="sendTextColor" />
+        <el-color-picker v-model="sendTextColor"/>
       </div>
       <el-divider content-position="left">接收配置</el-divider>
       <div>
@@ -53,7 +53,7 @@
       </div>
       <div>
         <span style="font-weight: 500; font-size: 14px; color: #606266; margin-right: 100px;">接收字符串颜色</span>
-        <el-color-picker v-model="receivedTextColor" />
+        <el-color-picker v-model="receivedTextColor"/>
       </div>
     </div>
 
@@ -62,7 +62,7 @@
       <!-- 接收数据 -->
       <div ref="receivedContext"
            style="flex: 1; border: 1px solid #DCDFE6; border-radius: 5px; margin-bottom: 3px; padding: 10px; overflow: auto">
-        <p v-for="item in receivedData">
+        <p v-for="item in receivedData" style="white-space: pre-wrap; word-break: break-all;">
           <span v-if="item.direction == 'in'" :style="{color: receivedTextColor}">« {{ item.data }}</span>
           <span v-else :style="{color: sendTextColor}">» {{ item.data }}</span>
         </p>
@@ -71,7 +71,7 @@
       <div style="height: 140px">
         <div style="display: flex; flex-direction: row">
           <el-input v-model="sendData" type="textarea" :rows="4" class="locked-textarea" style="flex: 1"
-                    @input="sendDataInputEvent"/>
+                    placeholder="Alt + Enter 发送" @input="sendDataInputEvent"/>
           <el-button type="primary" @click="sendToPort" :disabled="!isPortOpen" class="send-data-button">发送
           </el-button>
         </div>
@@ -80,6 +80,7 @@
           <span class="left">接收: {{ receivedCount }}</span>
           <el-button class="right" type="danger" @click="clearReceived">清空接收区</el-button>
           <el-checkbox class="right" v-model="autoScroll" style="margin-right: 8px">自动滚动</el-checkbox>
+          <el-checkbox class="right" v-model="saveSendMsg" style="margin-right: 8px">保留发送区</el-checkbox>
         </div>
       </div>
     </div>
@@ -125,6 +126,7 @@ const sendCount = ref(0) // 发送数据计数
 const receivedContext = ref() // 接收数据容器
 const sendTextColor = ref('#FFAA00')
 const receivedTextColor = ref('#000000')
+const saveSendMsg = ref(false) // 是否保留发送区
 
 onMounted(() => {
   let buffer = ''                         // 暂存数据
@@ -183,6 +185,13 @@ onMounted(() => {
       }, 1000)
     }
   })
+})
+
+addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.altKey) {
+    // Alt + Enter 发送数据
+    sendToPort()
+  }
 })
 
 // 扫描串口
@@ -248,6 +257,7 @@ function clearReceived() {
 function sendToPort() {
   if (!sendData.value) return
   sendCount.value += sendData.value.length
+  // 16进制发送
   if (hexSend.value) {
     const hexArray = sendData.value
         .trim()
@@ -264,9 +274,14 @@ function sendToPort() {
     }).catch((err) => {
       ElMessage.error(err)
     })
-  } else {
-    // 普通发送
-    invoke("write_serial", {data: Array.from(sendData.value, c => c.charCodeAt(0))}).then(() => {
+  }
+  // 普通发送
+  else {
+    invoke("write_serial", {
+      // 将字符串转换为字节数组
+      data: Array.from(new TextEncoder().encode(sendData.value))
+    }).then(() => {
+      // 发送成功
     }).catch((err) => {
       ElMessage.error(err)
     })
@@ -283,6 +298,10 @@ function sendToPort() {
       el.scrollTop = el.scrollHeight
     }
   })
+  // 清空发送区
+  if (!saveSendMsg.value) {
+    sendData.value = ''
+  }
 }
 
 function sendDataInputEvent(value: string) {
